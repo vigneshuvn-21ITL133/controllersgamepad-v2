@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Alert,
+  AppState,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { applyProfileAxes, parsePairingPayload } from './src/controllerProtocol';
 import type { ControlProfile, ControllerInput, PairingPayload } from './src/controllerProtocol';
 
@@ -24,9 +27,13 @@ type DesktopCommand = {
   key?: string; down?: boolean; text?: string; dx?: number; dy?: number; button?: string; delta?: number;
 };
 const EMPTY_AXES: Axes = { leftX: 0, leftY: 0, rightX: 0, rightY: 0, leftTrigger: 0, rightTrigger: 0 };
-const KEY_ROWS = [['1','2','3','4','5','6','7','8','9','0'], ['Q','W','E','R','T','Y','U','I','O','P'], ['A','S','D','F','G','H','J','K','L'], ['SHIFT','Z','X','C','V','B','N','M','BACKSPACE'], ['CTRL','ALT','WIN','LEFT','DOWN','UP','RIGHT']];
+const KEY_ROWS = [['F1','F2','F3','F4','F5','F6'], ['F7','F8','F9','F10','F11','F12'], ['1','2','3','4','5','6','7','8','9','0'], ['Q','W','E','R','T','Y','U','I','O','P'], ['A','S','D','F','G','H','J','K','L'], ['SHIFT','Z','X','C','V','B','N','M','BACKSPACE'], ['CTRL','ALT','WIN','LEFT','DOWN','UP','RIGHT']];
 
 export default function App() {
+  return <SafeAreaProvider style={{ flex: 1 }}><ControllerApp /></SafeAreaProvider>;
+}
+
+function ControllerApp() {
   const [permission, requestPermission] = useCameraPermissions();
   const [state, setState] = useState<ConnectionState>('idle');
   const [pairing, setPairing] = useState<PairingPayload | null>(null);
@@ -42,6 +49,8 @@ export default function App() {
   const [latency, setLatency] = useState<number | null>(null);
   const [typedText, setTypedText] = useState('');
   const socket = useRef<WebSocket | null>(null);
+  const heldDesktopKeys = useRef(new Set<string>());
+  const heldDesktopMouseButtons = useRef(new Set<string>());
   const scanned = useRef(false);
   const inputRef = useRef({ pressed, axes });
   const mousePosition = useRef<{ x: number; y: number } | null>(null);
@@ -95,7 +104,54 @@ export default function App() {
     try { ws.send(JSON.stringify(packet)); } catch { /* socket may have closed */ }
   }, []);
 
+  // Track held key/button state so phone app backgrounding and tab changes can always release it.
+  const sendTrackedDesktopInput = useCallback((command: Omit<DesktopCommand, 'type'>) => {
+    if (command.action === 'key' && command.key) {
+      if (command.down) heldDesktopKeys.current.add(command.key.toUpperCase());
+      else heldDesktopKeys.current.delete(command.key.toUpperCase());
+    } else if (command.action === 'mouseButton' && command.button) {
+      const button = command.button.toUpperCase();
+      if (command.down) heldDesktopMouseButtons.current.add(button);
+      else heldDesktopMouseButtons.current.delete(button);
+    }
+    sendDesktop(command);
+  }, [sendDesktop]);
+
+  const releaseHeldDesktopInput = useCallback(() => {
+    for (const key of heldDesktopKeys.current) sendDesktop({ action: 'key', key, down: false });
+    for (const button of heldDesktopMouseButtons.current) sendDesktop({ action: 'mouseButton', button, down: false });
+    heldDesktopKeys.current.clear();
+    heldDesktopMouseButtons.current.clear();
+  }, [sendDesktop]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') {
+        releaseHeldDesktopInput();
+        // Send a neutral gamepad state before Android/iOS suspends timers.
+        inputRef.current = { pressed: [], axes: EMPTY_AXES };
+        setPressed([]);
+        setAxes(EMPTY_AXES);
+        sendInput([], EMPTY_AXES);
+      }
+    });
+    return () => subscription.remove();
+  }, [releaseHeldDesktopInput, sendInput]);
+
+  const changeMode = useCallback((nextMode: ControlMode) => {
+    Keyboard.dismiss();
+    releaseHeldDesktopInput();
+    // A mode change is a release boundary: don't carry a pressed stick/button into another tab.
+    inputRef.current = { pressed: [], axes: EMPTY_AXES };
+    setPressed([]);
+    setAxes(EMPTY_AXES);
+    sendInput([], EMPTY_AXES);
+    mousePosition.current = null;
+    setMode(nextMode);
+  }, [releaseHeldDesktopInput, sendInput]);
+
   const disconnect = useCallback(() => {
+    releaseHeldDesktopInput();
     const active = socket.current;
     socket.current = null;
     active?.close();
@@ -105,9 +161,11 @@ export default function App() {
     setState('idle');
     setMessage('Disconnected. Scan a fresh code or enter the PC details again.');
     scanned.current = false;
-  }, []);
+    mousePosition.current = null;
+  }, [releaseHeldDesktopInput]);
 
   function connect(payload: PairingPayload) {
+    releaseHeldDesktopInput();
     // Invalidate the previous socket before closing it; its close event may be delivered late.
     const previous = socket.current;
     socket.current = null;
@@ -177,6 +235,9 @@ export default function App() {
       clearTimeout(connectTimeout);
       if (socket.current !== ws) return;
       socket.current = null;
+      heldDesktopKeys.current.clear();
+      heldDesktopMouseButtons.current.clear();
+      mousePosition.current = null;
       setPressed([]);
       setAxes(EMPTY_AXES);
       setLatency(null);
@@ -238,7 +299,8 @@ export default function App() {
     : { Y: '△', X: '□', B: '○', A: '✕' };
 
   if (state !== 'connected') {
-    return <SafeAreaView style={styles.container}>
+    return <SafeAreaView edges={['top', 'right', 'bottom', 'left']} style={styles.container}>
+      <KeyboardAvoidingView style={styles.flexFill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.connectContent} keyboardShouldPersistTaps="handled">
         <BrandMark />
         <View style={styles.heroBlock}>
@@ -274,6 +336,7 @@ export default function App() {
         <View style={styles.securityNote}><Text style={styles.securityIcon}>✓</Text><Text style={styles.securityText}>Same trusted Wi-Fi network required. Pair codes expire after 5 minutes and can be used only once. Never connect over public networks.</Text></View>
         <Text style={styles.versionText}>V_CONTROL MOBILE · LOCAL NETWORK SESSION</Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>;
   }
 
@@ -285,8 +348,9 @@ export default function App() {
     <View style={styles.controlSectionHeader}><Text style={styles.sectionTitle}>KEYBOARD</Text><Text style={styles.sectionHint}>Press and hold to send</Text></View>
     <View style={styles.keyboardPanel}>
       <View style={styles.panelHeadingRow}><Text style={styles.panelLabel}>QUICK KEYS</Text><Text style={styles.profileSaved}>LIVE INPUT</Text></View>
-      {KEY_ROWS.map((row, rowIndex) => <View key={rowIndex} style={styles.keyRow}>{row.map((key) => <KeyCap key={key} label={key === 'BACKSPACE' ? '⌫' : key === 'LEFT' ? '←' : key === 'RIGHT' ? '→' : key === 'UP' ? '↑' : key === 'DOWN' ? '↓' : key} code={key} onPress={sendDesktop} wide={key === 'SHIFT' || key === 'BACKSPACE'} />)}</View>)}
-      <View style={styles.keyRow}><KeyCap label="ESC" code="ESC" onPress={sendDesktop} wide/><KeyCap label="TAB" code="TAB" onPress={sendDesktop} wide/><KeyCap label="SPACE" code="SPACE" onPress={sendDesktop} extraWide/><KeyCap label="ENTER" code="ENTER" onPress={sendDesktop} wide/></View>
+      {KEY_ROWS.map((row, rowIndex) => <View key={rowIndex} style={styles.keyRow}>{row.map((key) => <KeyCap key={key} label={key === 'BACKSPACE' ? '⌫' : key === 'LEFT' ? '←' : key === 'RIGHT' ? '→' : key === 'UP' ? '↑' : key === 'DOWN' ? '↓' : key} code={key} onPress={sendTrackedDesktopInput} wide={key === 'SHIFT' || key === 'BACKSPACE'} />)}</View>)}
+      <View style={styles.keyRow}><KeyCap label="ESC" code="ESC" onPress={sendTrackedDesktopInput} wide/><KeyCap label="TAB" code="TAB" onPress={sendTrackedDesktopInput} wide/><KeyCap label="HOME" code="HOME" onPress={sendTrackedDesktopInput} wide/><KeyCap label="END" code="END" onPress={sendTrackedDesktopInput} wide/><KeyCap label="DEL" code="DELETE" onPress={sendTrackedDesktopInput} wide/></View>
+      <View style={styles.keyRow}><KeyCap label="SPACE" code="SPACE" onPress={sendTrackedDesktopInput} extraWide/><KeyCap label="ENTER" code="ENTER" onPress={sendTrackedDesktopInput} wide/></View>
     </View>
     <View style={styles.keyboardPanel}>
       <Text style={styles.panelLabel}>TYPE TEXT TO YOUR PC</Text>
@@ -302,20 +366,27 @@ export default function App() {
       onResponderMove={(event) => {
         const next = { x: event.nativeEvent.locationX, y: event.nativeEvent.locationY };
         const prev = mousePosition.current; mousePosition.current = next; if (!prev) return;
-        const dx = Math.round((next.x - prev.x) * 1.65); const dy = Math.round((next.y - prev.y) * 1.65);
+        const dxRaw = next.x - prev.x;
+        const dyRaw = next.y - prev.y;
+        // Two-finger swipes scroll the desktop; a single finger controls cursor movement.
+        if ((event.nativeEvent.touches?.length ?? 0) > 1) {
+          if (dyRaw !== 0) sendDesktop({ action: 'scroll', delta: Math.round(-dyRaw * 8) });
+          return;
+        }
+        const dx = Math.round(dxRaw * 1.65); const dy = Math.round(dyRaw * 1.65);
         if (dx || dy) sendDesktop({ action: 'move', dx, dy });
       }} onResponderRelease={() => { mousePosition.current = null; }} onResponderTerminate={() => { mousePosition.current = null; }}>
-      <View style={styles.touchpadIcon}><Text style={styles.touchpadIconText}>⌖</Text></View><Text style={styles.touchpadTitle}>Move cursor</Text><Text style={styles.touchpadHint}>Slide one finger to move · use controls below to click</Text>
+      <View style={styles.touchpadIcon}><Text style={styles.touchpadIconText}>⌖</Text></View><Text style={styles.touchpadTitle}>Move cursor</Text><Text style={styles.touchpadHint}>Slide one finger to move · swipe with two fingers to scroll</Text>
     </View>
     <View style={styles.mouseButtonsRow}>
-      <Pressable style={styles.mouseClick} onPressIn={() => sendDesktop({ action: 'mouseButton', button: 'LEFT', down: true })} onPressOut={() => sendDesktop({ action: 'mouseButton', button: 'LEFT', down: false })}><View style={styles.mouseButtonIcon}><Text style={styles.mouseButtonIconText}>L</Text></View><Text style={styles.mouseButtonTitle}>LEFT CLICK</Text><Text style={styles.mouseButtonHint}>Primary</Text></Pressable>
-      <Pressable style={styles.mouseClick} onPressIn={() => sendDesktop({ action: 'mouseButton', button: 'RIGHT', down: true })} onPressOut={() => sendDesktop({ action: 'mouseButton', button: 'RIGHT', down: false })}><View style={styles.mouseButtonIcon}><Text style={styles.mouseButtonIconText}>R</Text></View><Text style={styles.mouseButtonTitle}>RIGHT CLICK</Text><Text style={styles.mouseButtonHint}>Secondary</Text></Pressable>
+      <Pressable style={({ pressed }) => [styles.mouseClick, pressed && styles.padPressed]} onPressIn={() => sendTrackedDesktopInput({ action: 'mouseButton', button: 'LEFT', down: true })} onPressOut={() => sendTrackedDesktopInput({ action: 'mouseButton', button: 'LEFT', down: false })}><View style={styles.mouseButtonIcon}><Text style={styles.mouseButtonIconText}>L</Text></View><Text style={styles.mouseButtonTitle}>LEFT CLICK</Text><Text style={styles.mouseButtonHint}>Primary</Text></Pressable>
+      <Pressable style={({ pressed }) => [styles.mouseClick, pressed && styles.padPressed]} onPressIn={() => sendTrackedDesktopInput({ action: 'mouseButton', button: 'RIGHT', down: true })} onPressOut={() => sendTrackedDesktopInput({ action: 'mouseButton', button: 'RIGHT', down: false })}><View style={styles.mouseButtonIcon}><Text style={styles.mouseButtonIconText}>R</Text></View><Text style={styles.mouseButtonTitle}>RIGHT CLICK</Text><Text style={styles.mouseButtonHint}>Secondary</Text></Pressable>
     </View>
     <View style={styles.scrollControls}><Text style={styles.panelLabel}>SCROLL</Text><Pressable style={styles.scrollButton} onPress={() => sendDesktop({ action: 'scroll', delta: 120 })}><Text style={styles.scrollText}>↑  Scroll up</Text></Pressable><Pressable style={styles.scrollButton} onPress={() => sendDesktop({ action: 'scroll', delta: -120 })}><Text style={styles.scrollText}>↓  Scroll down</Text></Pressable></View>
     <Text style={styles.helperText}>Mouse control works while the PC session is connected. Input is released automatically if the connection drops.</Text>
   </>;
 
-  return <SafeAreaView style={styles.container}>
+  return <SafeAreaView edges={['top', 'right', 'bottom', 'left']} style={styles.container}>
     <View style={styles.appHeader}>
       <BrandMark compact />
       <View style={styles.connectionPill}><View style={[styles.statusDot, styles.greenDot]} /><Text style={styles.connectionText}>CONNECTED</Text></View>
@@ -325,6 +396,7 @@ export default function App() {
       <Pressable style={styles.disconnectButton} onPress={disconnect}><Text style={styles.disconnectText}>Disconnect</Text></Pressable>
     </View>
 
+    <KeyboardAvoidingView style={styles.flexFill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.controlScroll} contentContainerStyle={styles.controlContent} keyboardShouldPersistTaps="handled">
       {mode === 'gamepad' ? <>
         <View style={styles.profilePanel}>
@@ -345,11 +417,11 @@ export default function App() {
             </View>
           </View>
           <View style={styles.shoulderRow}>
-            <Pressable onPressIn={() => setButton('LB', true)} onPressOut={() => setButton('LB', false)} style={styles.shoulderButton}><Text style={styles.shoulderCode}>LB</Text><Text style={styles.shoulderLabel}>BUMPER</Text></Pressable>
-            <Pressable onPressIn={() => setTrigger('leftTrigger', true)} onPressOut={() => setTrigger('leftTrigger', false)} style={styles.triggerButton}><Text style={styles.shoulderCode}>LT</Text><Text style={styles.shoulderLabel}>TRIGGER</Text></Pressable>
+            <Pressable onPressIn={() => setButton('LB', true)} onPressOut={() => setButton('LB', false)} style={({ pressed }) => [styles.shoulderButton, pressed && styles.padPressed]}><Text style={styles.shoulderCode}>LB</Text><Text style={styles.shoulderLabel}>BUMPER</Text></Pressable>
+            <Pressable onPressIn={() => setTrigger('leftTrigger', true)} onPressOut={() => setTrigger('leftTrigger', false)} style={({ pressed }) => [styles.triggerButton, pressed && styles.padPressed]}><Text style={styles.shoulderCode}>LT</Text><Text style={styles.shoulderLabel}>TRIGGER</Text></Pressable>
             <View style={{ flex: 1 }} />
-            <Pressable onPressIn={() => setTrigger('rightTrigger', true)} onPressOut={() => setTrigger('rightTrigger', false)} style={styles.triggerButton}><Text style={styles.shoulderCode}>RT</Text><Text style={styles.shoulderLabel}>TRIGGER</Text></Pressable>
-            <Pressable onPressIn={() => setButton('RB', true)} onPressOut={() => setButton('RB', false)} style={styles.shoulderButton}><Text style={styles.shoulderCode}>RB</Text><Text style={styles.shoulderLabel}>BUMPER</Text></Pressable>
+            <Pressable onPressIn={() => setTrigger('rightTrigger', true)} onPressOut={() => setTrigger('rightTrigger', false)} style={({ pressed }) => [styles.triggerButton, pressed && styles.padPressed]}><Text style={styles.shoulderCode}>RT</Text><Text style={styles.shoulderLabel}>TRIGGER</Text></Pressable>
+            <Pressable onPressIn={() => setButton('RB', true)} onPressOut={() => setButton('RB', false)} style={({ pressed }) => [styles.shoulderButton, pressed && styles.padPressed]}><Text style={styles.shoulderCode}>RB</Text><Text style={styles.shoulderLabel}>BUMPER</Text></Pressable>
           </View>
           <View style={styles.sticksRow}>
             <Stick title="LEFT STICK" x={axes.leftX} y={axes.leftY} onChange={(x, y) => setStick('left', x, y)} onRelease={() => setStick('left', 0, 0)} />
@@ -358,9 +430,9 @@ export default function App() {
           <View style={styles.controllerGrid}>
             <View style={styles.controlPanel}><Text style={styles.panelLabel}>D-PAD</Text><View style={styles.dpad}><View style={styles.dpadRow}><PadButton label="↑" code="UP" onPress={setButton} shape="dpad"/></View><View style={styles.dpadRow}><PadButton label="←" code="LEFT" onPress={setButton} shape="dpad"/><View style={styles.dpadCenter}/><PadButton label="→" code="RIGHT" onPress={setButton} shape="dpad"/></View><View style={styles.dpadRow}><PadButton label="↓" code="DOWN" onPress={setButton} shape="dpad"/></View></View></View>
             <View style={styles.controlPanel}><Text style={styles.panelLabel}>ACTION BUTTONS</Text><View style={styles.faceGrid}>
-              <View style={styles.faceRow}><View style={{ width: 43 }}/><PadButton label={faceLabels.Y} code="Y" onPress={setButton} color="#E5E9EE"/></View>
-              <View style={styles.faceRow}><PadButton label={faceLabels.X} code="X" onPress={setButton} color="#E5E9EE"/><View style={{ width: 6 }}/><PadButton label={faceLabels.B} code="B" onPress={setButton} color="#E5E9EE"/></View>
-              <View style={styles.faceRow}><View style={{ width: 43 }}/><PadButton label={faceLabels.A} code="A" onPress={setButton} color="#E5E9EE"/></View>
+              <View style={styles.faceRow}><View style={{ width: 50 }}/><PadButton label={faceLabels.Y} code="Y" onPress={setButton} color="#F5DE91"/></View>
+              <View style={styles.faceRow}><PadButton label={faceLabels.X} code="X" onPress={setButton} color="#A9CEF7"/><View style={{ width: 6 }}/><PadButton label={faceLabels.B} code="B" onPress={setButton} color="#F3B0B0"/></View>
+              <View style={styles.faceRow}><View style={{ width: 50 }}/><PadButton label={faceLabels.A} code="A" onPress={setButton} color="#A7DDB7"/></View>
             </View></View>
           </View>
           <View style={styles.utilityRow}><PadButton label="BACK" code="BACK" onPress={setButton} shape="utility"/><PadButton label="L3" code="L3" onPress={setButton} shape="utility"/><PadButton label="START" code="START" onPress={setButton} shape="utility"/><PadButton label="R3" code="R3" onPress={setButton} shape="utility"/></View>
@@ -376,11 +448,12 @@ export default function App() {
       <View style={styles.bottomConnection}><View style={styles.bottomConnectionTop}><View style={[styles.statusDot, styles.greenDot]} /><Text style={styles.bottomConnectionTitle}>Connected · input ready</Text><Text style={styles.bottomLatency}>{latency === null ? '— ms' : `${latency} ms`}</Text></View><Text style={styles.bottomConnectionHint}>Keep V_Control open and both devices on the same Wi-Fi. The PC releases held input if the session drops.</Text></View>
     </ScrollView>
     <View style={styles.bottomNav}>
-      <Pressable onPress={() => setMode('gamepad')} style={styles.navItem}><Text style={[styles.navIcon, mode === 'gamepad' && styles.navIconActive]}>◎</Text><Text style={[styles.navLabel, mode === 'gamepad' && styles.navLabelActive]}>Gamepad</Text></Pressable>
-      <Pressable onPress={() => setMode('keyboard')} style={styles.navItem}><Text style={[styles.navIcon, mode === 'keyboard' && styles.navIconActive]}>⌨</Text><Text style={[styles.navLabel, mode === 'keyboard' && styles.navLabelActive]}>Keyboard</Text></Pressable>
-      <Pressable onPress={() => setMode('mouse')} style={styles.navItem}><Text style={[styles.navIcon, mode === 'mouse' && styles.navIconActive]}>▱</Text><Text style={[styles.navLabel, mode === 'mouse' && styles.navLabelActive]}>Mouse</Text></Pressable>
-      <Pressable onPress={() => setMode('more')} style={styles.navItem}><Text style={[styles.navIcon, mode === 'more' && styles.navIconActive]}>⋯</Text><Text style={[styles.navLabel, mode === 'more' && styles.navLabelActive]}>More</Text></Pressable>
+      <Pressable onPress={() => changeMode('gamepad')} style={[styles.navItem, mode === 'gamepad' && styles.navItemActive]}><Text style={[styles.navIcon, mode === 'gamepad' && styles.navIconActive]}>◎</Text><Text style={[styles.navLabel, mode === 'gamepad' && styles.navLabelActive]}>Gamepad</Text></Pressable>
+      <Pressable onPress={() => changeMode('keyboard')} style={[styles.navItem, mode === 'keyboard' && styles.navItemActive]}><Text style={[styles.navIcon, mode === 'keyboard' && styles.navIconActive]}>⌨</Text><Text style={[styles.navLabel, mode === 'keyboard' && styles.navLabelActive]}>Keyboard</Text></Pressable>
+      <Pressable onPress={() => changeMode('mouse')} style={[styles.navItem, mode === 'mouse' && styles.navItemActive]}><Text style={[styles.navIcon, mode === 'mouse' && styles.navIconActive]}>▱</Text><Text style={[styles.navLabel, mode === 'mouse' && styles.navLabelActive]}>Mouse</Text></Pressable>
+      <Pressable onPress={() => changeMode('more')} style={[styles.navItem, mode === 'more' && styles.navItemActive]}><Text style={[styles.navIcon, mode === 'more' && styles.navIconActive]}>⋯</Text><Text style={[styles.navLabel, mode === 'more' && styles.navLabelActive]}>More</Text></Pressable>
     </View>
+    </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 
@@ -400,8 +473,8 @@ function PadButton({ label, code, onPress, shape = 'action', color }: { label: s
 }
 
 function Stick({ title, x, y, onChange, onRelease }: { title: string; x: number; y: number; onChange: (x: number, y: number) => void; onRelease: () => void }) {
-  const center = 57;
-  const radius = 37;
+  const center = 53;
+  const radius = 34;
   const readPoint = (event: any) => {
     const cx = event.nativeEvent.locationX - center;
     const cy = event.nativeEvent.locationY - center;
@@ -421,6 +494,7 @@ function KeyCap({ label, code, onPress, wide = false, extraWide = false }: { lab
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F1F4F7' },
+  flexFill: { flex: 1 },
   connectContent: { paddingHorizontal: 21, paddingTop: 20, paddingBottom: 30 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandIcon: { width: 40, height: 40, borderRadius: 11, backgroundColor: '#E3E8EE', borderWidth: 1, borderColor: '#D6DEE7', alignItems: 'center', justifyContent: 'center' },
@@ -440,7 +514,7 @@ const styles = StyleSheet.create({
   primaryButton: { minHeight: 49, backgroundColor: '#71869A', borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#697E91' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800', letterSpacing: 0.1 },
   cameraCard: { height: 292, overflow: 'hidden', borderRadius: 15, backgroundColor: '#323E4A', marginBottom: 5 },
-  scanFrame: { ...StyleSheet.absoluteFillObject, margin: 42 },
+  scanFrame: { ...StyleSheet.absoluteFill, margin: 42 },
   scanCornerTL: { position: 'absolute', left: 0, top: 0, width: 28, height: 28, borderTopWidth: 3, borderLeftWidth: 3, borderColor: '#DCE4EC', borderTopLeftRadius: 7 },
   scanCornerTR: { position: 'absolute', right: 0, top: 0, width: 28, height: 28, borderTopWidth: 3, borderRightWidth: 3, borderColor: '#DCE4EC', borderTopRightRadius: 7 },
   scanCornerBL: { position: 'absolute', left: 0, bottom: 0, width: 28, height: 28, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: '#DCE4EC', borderBottomLeftRadius: 7 },
@@ -466,8 +540,8 @@ const styles = StyleSheet.create({
   controllerIllustration: { height: 113, alignItems: 'center', justifyContent: 'center', marginTop: 5, marginBottom: 1 }, controllerArtBody: { width: '86%', height: 67, borderRadius: 30, backgroundColor: '#E5EBF1', borderWidth: 1, borderColor: '#BDCAD6', position: 'relative', overflow: 'visible' }, controllerArtGripLeft: { position: 'absolute', width: 47, height: 54, left: 8, bottom: -24, borderRadius: 20, backgroundColor: '#E5EBF1', borderWidth: 1, borderColor: '#BDCAD6', transform: [{ rotate: '12deg' }] }, controllerArtGripRight: { position: 'absolute', width: 47, height: 54, right: 8, bottom: -24, borderRadius: 20, backgroundColor: '#E5EBF1', borderWidth: 1, borderColor: '#BDCAD6', transform: [{ rotate: '-12deg' }] }, controllerArtDpadHorizontal: { position: 'absolute', width: 34, height: 10, left: 21, top: 27, borderRadius: 3, backgroundColor: '#8192A3' }, controllerArtDpadVertical: { position: 'absolute', width: 10, height: 34, left: 33, top: 15, borderRadius: 3, backgroundColor: '#8192A3' }, controllerArtStickLeft: { position: 'absolute', left: 74, top: 18, width: 24, height: 24, borderRadius: 12, backgroundColor: '#CBD5DF', borderWidth: 2, borderColor: '#899BAC', alignItems: 'center', justifyContent: 'center' }, controllerArtStickRight: { position: 'absolute', right: 73, top: 28, width: 24, height: 24, borderRadius: 12, backgroundColor: '#CBD5DF', borderWidth: 2, borderColor: '#899BAC', alignItems: 'center', justifyContent: 'center' }, controllerArtStickInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#718397' }, controllerArtFaceCluster: { position: 'absolute', right: 20, top: 11, width: 43, height: 43, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 4 }, controllerArtButton: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#899BAC', borderWidth: 1, borderColor: '#718397' }, controllerArtCenterBadge: { position: 'absolute', top: -1, alignSelf: 'center', width: 21, height: 21, borderRadius: 7, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#C8D3DE', alignItems: 'center', justifyContent: 'center' }, controllerArtCenterText: { color: '#6A7E92', fontSize: 10, fontWeight: '900' },
   sticksRow: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#F8FAFC', borderRadius: 13, paddingVertical: 12, borderWidth: 1, borderColor: '#E1E8EE', marginVertical: 10 }, stickColumn: { alignItems: 'center', flex: 1 }, stickSurface: { width: 106, height: 106, borderRadius: 53, backgroundColor: '#E7EDF3', borderWidth: 1, borderColor: '#D4DFE8', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, stickRing: { position: 'absolute', width: 74, height: 74, borderRadius: 37, borderWidth: 1, borderColor: '#C8D4DF' }, stickCrossH: { position: 'absolute', height: 1, left: 13, right: 13, backgroundColor: '#D3DDE6' }, stickCrossV: { position: 'absolute', width: 1, top: 13, bottom: 13, backgroundColor: '#D3DDE6' }, stickKnob: { position: 'absolute', width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#AAB9C7', backgroundColor: '#C9D3DE', alignItems: 'center', justifyContent: 'center' }, stickKnobInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#6D8296' }, stickTitle: { color: '#718496', fontSize: 8, letterSpacing: 0.8, fontWeight: '900', marginTop: 8 }, stickValue: { color: '#8797A5', fontSize: 8, fontFamily: 'Doto', marginTop: 4 },
   shoulderRow: { flexDirection: 'row', gap: 5, alignItems: 'center', marginTop: 10, marginBottom: 2 }, shoulderButton: { width: 56, height: 41, borderRadius: 9, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D9E2EA', alignItems: 'center', justifyContent: 'center' }, triggerButton: { width: 53, height: 41, borderRadius: 9, backgroundColor: '#E8EDF2', borderWidth: 1, borderColor: '#D5DFE8', alignItems: 'center', justifyContent: 'center' }, shoulderCode: { color: '#3F566B', fontSize: 12, fontWeight: '900' }, shoulderLabel: { color: '#8796A4', fontSize: 6, marginTop: 2, letterSpacing: 0.4, fontWeight: '800' },
-  controllerGrid: { flexDirection: 'row', gap: 9 }, controlPanel: { flex: 1, backgroundColor: '#FFFFFF', borderColor: '#DCE4EC', borderWidth: 1, borderRadius: 13, padding: 10, minHeight: 176 }, panelLabel: { color: '#748799', fontSize: 8, fontWeight: '900', letterSpacing: 1.0 }, dpad: { marginTop: 10, alignItems: 'center' }, dpadRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }, dpadCenter: { width: 36 }, faceGrid: { alignItems: 'center', marginTop: 10 }, faceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
-  padButton: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D3DEE8' }, padDpad: { width: 38, height: 38, borderRadius: 8, backgroundColor: '#E9EEF3' }, padAction: { width: 39, height: 39, borderRadius: 20, backgroundColor: '#E5EAF0' }, padUtility: { flex: 1, height: 36, borderRadius: 9, backgroundColor: '#FFFFFF', paddingHorizontal: 3 }, padPressed: { backgroundColor: '#D1DBE4', borderColor: '#9EAFBE' }, padButtonText: { color: '#40586D', fontSize: 14, fontWeight: '900' }, padUtilityText: { fontSize: 8, letterSpacing: 0.1 },
+  controllerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 }, controlPanel: { flex: 1, minWidth: 140, backgroundColor: '#FFFFFF', borderColor: '#DCE4EC', borderWidth: 1, borderRadius: 13, padding: 10, minHeight: 176 }, panelLabel: { color: '#748799', fontSize: 8, fontWeight: '900', letterSpacing: 1.0 }, dpad: { marginTop: 10, alignItems: 'center' }, dpadRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }, dpadCenter: { width: 42 }, faceGrid: { alignItems: 'center', marginTop: 10 }, faceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
+  padButton: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D3DEE8' }, padDpad: { width: 42, height: 42, borderRadius: 9, backgroundColor: '#E9EEF3' }, padAction: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5EAF0' }, padUtility: { flex: 1, height: 36, borderRadius: 9, backgroundColor: '#FFFFFF', paddingHorizontal: 3 }, padPressed: { backgroundColor: '#D1DBE4', borderColor: '#9EAFBE' }, padButtonText: { color: '#40586D', fontSize: 14, fontWeight: '900' }, padUtilityText: { fontSize: 8, letterSpacing: 0.1 },
   utilityRow: { flexDirection: 'row', gap: 7, marginTop: 10 }, helperText: { color: '#8493A1', fontSize: 9, lineHeight: 14, marginHorizontal: 3, marginTop: 12 },
   touchpad: { height: 220, backgroundColor: '#E8EEF4', borderWidth: 1, borderColor: '#D4DFE8', borderRadius: 15, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, touchpadIcon: { width: 47, height: 47, backgroundColor: '#D9E3EC', borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }, touchpadIconText: { color: '#637B91', fontSize: 32 }, touchpadTitle: { color: '#344D64', fontSize: 14, fontWeight: '800' }, touchpadHint: { color: '#768A9D', fontSize: 9, marginTop: 6, textAlign: 'center', paddingHorizontal: 12 },
   mouseButtonsRow: { flexDirection: 'row', gap: 9, marginTop: 10 }, mouseClick: { flex: 1, borderRadius: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE4EC', paddingVertical: 13, alignItems: 'center' }, mouseButtonIcon: { width: 25, height: 25, borderRadius: 8, backgroundColor: '#E8EDF2', alignItems: 'center', justifyContent: 'center', marginBottom: 7 }, mouseButtonIconText: { color: '#526C83', fontSize: 10, fontWeight: '900' }, mouseButtonTitle: { color: '#3C5368', fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }, mouseButtonHint: { color: '#8B99A7', fontSize: 8, marginTop: 4 },
@@ -476,5 +550,5 @@ const styles = StyleSheet.create({
   panelHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, layoutToggle: { color: '#71869A', fontSize: 8, fontWeight: '900' },
   moreCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE4EC', borderRadius: 13, padding: 14, marginBottom: 11 }, moreTitle: { color: '#2C4257', fontSize: 16, fontWeight: '800', marginTop: 10 },
   bottomConnection: { backgroundColor: '#EAF0F5', borderColor: '#D9E2EA', borderWidth: 1, borderRadius: 11, marginTop: 15, padding: 12 }, bottomConnectionTop: { flexDirection: 'row', alignItems: 'center', gap: 7 }, bottomConnectionTitle: { color: '#4B6378', fontSize: 10, fontWeight: '900', flex: 1 }, bottomLatency: { color: '#637B90', fontFamily: 'Doto', fontSize: 10, fontWeight: '800' }, bottomConnectionHint: { color: '#748798', fontSize: 9, lineHeight: 14, marginTop: 7 },
-  bottomNav: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#D9E2EA', paddingHorizontal: 7, paddingTop: 5, paddingBottom: 3 }, navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 5, borderRadius: 8 }, navIcon: { color: '#7D8D9B', fontSize: 19, lineHeight: 22 }, navIconActive: { color: '#526F88' }, navLabel: { color: '#8796A3', fontSize: 8, fontWeight: '700' }, navLabelActive: { color: '#415D75', fontWeight: '900' },
+  bottomNav: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#D9E2EA', paddingHorizontal: 7, paddingTop: 5, paddingBottom: 3 }, navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 6, minHeight: 48, borderRadius: 9 }, navItemActive: { backgroundColor: '#EEF3F7' }, navIcon: { color: '#7D8D9B', fontSize: 19, lineHeight: 22 }, navIconActive: { color: '#526F88' }, navLabel: { color: '#8796A3', fontSize: 8, fontWeight: '700' }, navLabelActive: { color: '#415D75', fontWeight: '900' },
 });
