@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "V_Control",
+    "slug": "v-control",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.vigneshuvn.vcontrol",
+      "versionCode": 2,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F6F8F7"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow V_Control to scan the pairing QR code shown on your Windows PC.",
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6F8F7"
+    }
+  }
+}

@@ -1,0 +1,103 @@
+
+# ==========================================
+# Node.js / React Native / Expo
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# Expo
+.expo/
+web-build/
+expo-env.d.ts
+
+# Metro / bundler caches
+.metro-health-check*
+.metro-cache/
+.cache/
+
+# ==========================================
+# Environment variables and secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Local configuration containing credentials
+*.local
+*.local.json
+secrets/
+credentials/
+secrets.json
+credentials.json
+service-account*.json
+
+# Firebase / Google service configuration
+google-services.json
+GoogleService-Info.plist
+
+# Private keys, certificates and signing files
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+
+# ==========================================
+# .NET / C# / WPF
+# ==========================================
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+
+# NuGet packages and temporary files
+packages/
+*.nupkg
+*.snupkg
+
+# ==========================================
+# Logs / temporary files
+# ==========================================
+logs/
+*.log
+*.tmp
+*.temp
+*.txt
+
+# ==========================================
+# Operating system files
+# ==========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# VS Code local settings
+# ==========================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ==========================================
+# Test / coverage outputs
+# ==========================================
+test-results/
+.nyc_output/

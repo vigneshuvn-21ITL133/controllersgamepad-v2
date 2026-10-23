@@ -1,0 +1,210 @@
+<Window x:Class="WirelessController.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="V_Control" Height="850" Width="1420" MinHeight="700" MinWidth="1120"
+        WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
+        Background="#F1F4F7" Foreground="{StaticResource TextBrush}" Closed="MainWindow_Closed">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="25"/></Grid.RowDefinitions>
+
+        <!-- Custom title bar: drag anywhere except window-control buttons; double-click to maximize. -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#D9E1E9" BorderThickness="0,0,0,1" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid Margin="18,0,10,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="28" Height="28" Background="#E5EAF0" CornerRadius="7" Margin="0,0,9,0">
+                        <TextBlock Text="V" FontFamily="Doto" FontSize="20" FontWeight="Bold" Foreground="#657B91" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="V_CONTROL" FontFamily="Doto" FontSize="14" FontWeight="Bold" Foreground="#233447"/>
+                        <TextBlock Text="WIRELESS CONTROL CENTER" FontSize="7" FontWeight="SemiBold" Foreground="#8B9AAA" Margin="0,-1,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Ellipse x:Name="HeaderStatusDot" Width="7" Height="7" Fill="#D93D48" Margin="0,0,7,0"/>
+                    <TextBlock x:Name="HeaderStatusText" Text="Disconnected" Foreground="#D93D48" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,18,0"/>
+                    <Button x:Name="MinimizeWindowButton" Content="—" Width="34" Height="28" Padding="0" Margin="2,0" Background="Transparent" Foreground="#6E8091" BorderThickness="0" FontSize="13" ToolTip="Minimize" Click="MinimizeWindow_Click" Cursor="Hand"/>
+                    <Button x:Name="MaximizeWindowButton" Content="□" Width="34" Height="28" Padding="0" Margin="2,0" Background="Transparent" Foreground="#6E8091" BorderThickness="0" FontSize="12" ToolTip="Maximize / restore" Click="MaximizeWindow_Click" Cursor="Hand"/>
+                    <Button x:Name="CloseWindowButton" Content="×" Width="34" Height="28" Padding="0" Margin="2,0,0,0" Background="Transparent" Foreground="#6E8091" BorderThickness="0" FontSize="19" ToolTip="Close V_Control" Click="CloseWindow_Click" Cursor="Hand"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="#EEF2F6" BorderBrush="#D9E1E9" BorderThickness="0,0,1,0">
+                <DockPanel Margin="12,16,12,12">
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="WORKSPACE" FontSize="8" FontWeight="Bold" Foreground="#8A99A8" Margin="13,2,0,10"/>
+                        <Button x:Name="HomeNav" Content="⌂   Dashboard" Style="{StaticResource NavButtonStyle}" Tag="Active" Click="HomeNav_Click"/>
+                        <Button x:Name="DevicesNav" Content="▦   Pairing" Style="{StaticResource NavButtonStyle}" Click="DevicesNav_Click"/>
+                        <Button x:Name="GamepadNav" Content="◎   Gamepad" Style="{StaticResource NavButtonStyle}" Click="GamepadNav_Click"/>
+                        <Button x:Name="KeyboardNav" Content="⌨   Keyboard" Style="{StaticResource NavButtonStyle}" Click="KeyboardNav_Click"/>
+                        <Button x:Name="MouseNav" Content="▱   Mouse" Style="{StaticResource NavButtonStyle}" Click="MouseNav_Click"/>
+                        <Separator Margin="10,14,10,12" Background="#D9E1E9"/>
+                        <TextBlock Text="MANAGEMENT" FontSize="8" FontWeight="Bold" Foreground="#8A99A8" Margin="13,0,0,9"/>
+                        <Button x:Name="DiagnosticsNav" Content="⌁   Diagnostics" Style="{StaticResource NavButtonStyle}" Click="DiagnosticsNav_Click"/>
+                        <Button x:Name="SettingsNav" Content="⚙   Settings" Style="{StaticResource NavButtonStyle}" Click="SettingsNav_Click"/>
+                        <Button x:Name="LogsNav" Content="▤   Logs" Style="{StaticResource NavButtonStyle}" Click="LogsNav_Click"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="12,0,0,3">
+                        <Border Height="1" Background="#D9E1E9" Margin="0,0,7,12"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                            <Ellipse Width="6" Height="6" Fill="#8793A1" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <TextBlock Text="PRIVATE LAN" FontSize="8" Foreground="#758697" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="V_CONTROL  ·  1.0" FontSize="9" Foreground="#8794A2"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="56"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="#F7F9FB" BorderBrush="#D9E1E9" BorderThickness="0,0,0,1">
+                    <Grid Margin="25,0,28,0">
+                        <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="17" FontWeight="SemiBold" Foreground="#26394B" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="HeaderMeta" Text="WIRELESS INPUT  ·  LOCAL NETWORK" Foreground="#8A99A8" FontFamily="Doto" FontSize="8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="26,22,26,28">
+                        <!-- DASHBOARD -->
+                        <StackPanel x:Name="HomePage" Visibility="Visible" MaxWidth="1140" HorizontalAlignment="Left">
+                            <Grid Margin="0,0,0,17">
+                                <StackPanel><TextBlock Text="Wireless Control Center" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Connect your phone and control games, keyboard and mouse over your private Wi-Fi." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,0"/></StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="17" Margin="0,0,0,13">
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="42" Height="42" Background="#EDF1F5" BorderBrush="#DCE4EC" BorderThickness="1" CornerRadius="12" Margin="0,0,13,0"><Ellipse x:Name="HomeConnectionDot" Width="14" Height="14" Fill="#D93D48" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock x:Name="HomeConnectionValue" Text="Disconnected" FontSize="19" FontWeight="SemiBold" Foreground="#26394B"/><TextBlock x:Name="HomeStatus" Text="Start the connection server to begin." FontSize="10" Foreground="#758596" TextWrapping="Wrap" MaxWidth="540" Margin="0,4,0,0"/></StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Button x:Name="StartServerButton" Content="Start connection server" Style="{StaticResource PrimaryButtonStyle}" Click="StartServer_Click"/>
+                                        <Button x:Name="DisconnectPhoneButton" Content="Disconnect phone" Style="{StaticResource SecondaryButtonStyle}" Margin="0,7,0,0" Click="DisconnectPhone_Click" Visibility="Collapsed"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,0" Padding="14"><StackPanel><TextBlock Text="NETWORK" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="ServerAddressSmall" Text="Not started" FontSize="13" FontWeight="SemiBold" Foreground="#30465A"/><TextBlock Text="Local PC address" FontSize="9" Foreground="#8795A3" Margin="0,5,0,0"/></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="4,0,4,0" Padding="14"><StackPanel><TextBlock Text="SERVER" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="ServerValue" Text="Stopped" FontSize="13" FontWeight="SemiBold" Foreground="#8793A1"/><TextBlock Text="WebSocket · port 8557" FontSize="9" Foreground="#8795A3" Margin="0,5,0,0"/></StackPanel></Border>
+                                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Margin="4,0,4,0" Padding="14"><StackPanel><TextBlock Text="VIRTUAL GAMEPAD" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="DriverValue" Text="Not initialized" FontSize="13" FontWeight="SemiBold" Foreground="#8793A1"/><TextBlock x:Name="DriverDescription" Text="Xbox-compatible output" FontSize="9" Foreground="#8795A3" Margin="0,5,0,0"/></StackPanel></Border>
+                                <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Margin="8,0,0,0" Padding="14"><StackPanel><TextBlock Text="INPUT PACKETS" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="PacketCountValue" Text="0" FontSize="13" FontWeight="SemiBold" Foreground="#30465A"/><TextBlock x:Name="LastPacketValue" Text="Last packet: never" FontSize="9" Foreground="#8795A3" Margin="0,5,0,0"/></StackPanel></Border>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="0.9*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,0" Padding="17">
+                                    <StackPanel><TextBlock Text="QUICK CONTROL MODES" Style="{StaticResource FieldLabelStyle}"/>
+                                        <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,5,0" Padding="5,13" Click="GamepadNav_Click"><StackPanel HorizontalAlignment="Center"><TextBlock Text="◎" FontSize="23" Foreground="#657B91" HorizontalAlignment="Center"/><TextBlock Text="Gamepad" FontSize="10" Margin="0,7,0,0"/></StackPanel></Button>
+                                            <Button Grid.Column="1" Style="{StaticResource SecondaryButtonStyle}" Margin="3,0" Padding="5,13" Click="KeyboardNav_Click"><StackPanel HorizontalAlignment="Center"><TextBlock Text="⌨" FontSize="22" Foreground="#657B91" HorizontalAlignment="Center"/><TextBlock Text="Keyboard" FontSize="10" Margin="0,7,0,0"/></StackPanel></Button>
+                                            <Button Grid.Column="2" Style="{StaticResource SecondaryButtonStyle}" Margin="5,0,0,0" Padding="5,13" Click="MouseNav_Click"><StackPanel HorizontalAlignment="Center"><TextBlock Text="▱" FontSize="22" Foreground="#657B91" HorizontalAlignment="Center"/><TextBlock Text="Mouse" FontSize="10" Margin="0,7,0,0"/></StackPanel></Button>
+                                        </Grid>
+                                        <TextBlock Text="Choose a screen to review supported inputs and connection activity. Touch controls are sent from the Android companion." FontSize="10" Foreground="#8492A0" TextWrapping="Wrap" Margin="0,13,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="8,0,0,0" Padding="14">
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="108"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Border Width="96" Height="116" Background="#F5F7FA" BorderBrush="#DDE5ED" BorderThickness="1" CornerRadius="9" Padding="5" VerticalAlignment="Center"><Grid><Image x:Name="PairingQrImage" Stretch="Uniform" Visibility="Collapsed"/><StackPanel x:Name="QrEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center"><TextBlock Text="▦" FontSize="31" Foreground="#8091A1" HorizontalAlignment="Center"/><TextBlock Text="PAIRING QR" FontFamily="Doto" FontSize="8" Foreground="#8998A6" Margin="0,5,0,0"/></StackPanel></Grid></Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="Pair your phone" FontSize="14" FontWeight="SemiBold" Foreground="#2A3F52"/><TextBlock Text="Scan from the V_Control Android app." FontSize="9" Foreground="#7D8B99" TextWrapping="Wrap" Margin="0,5,0,9"/><TextBlock x:Name="PairingCodeText" Text="PAIR CODE  ·  — — — — — —" FontFamily="Doto" FontSize="10" Foreground="#627C94" TextWrapping="Wrap"/><TextBlock x:Name="PairingExpiryText" Text="One-time code · valid for 5 minutes" FontSize="9" Foreground="#8997A5" Margin="0,5,0,9"/><Button x:Name="PairingButton" Content="Generate new code" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Padding="9,6" Click="PairingCode_Click" IsEnabled="False"/><Button Content="Open pairing screen →" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Padding="9,6" Margin="0,6,0,0" Click="DevicesNav_Click"/></StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- PAIRING -->
+                        <StackPanel x:Name="DevicesPage" Visibility="Collapsed" MaxWidth="1040" HorizontalAlignment="Left">
+                            <TextBlock Text="Device Pairing" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Scan the QR code or enter the code manually in V_Control on Android." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,18"/>
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="20">
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="#F6F8FA" BorderBrush="#DEE6ED" BorderThickness="1" CornerRadius="12" Padding="13" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                        <Grid Width="220" Height="220"><Image x:Name="PairingQrImageLarge" Stretch="Uniform" Visibility="Collapsed"/><StackPanel x:Name="QrEmptyStateLarge" VerticalAlignment="Center" HorizontalAlignment="Center"><TextBlock Text="▦" FontSize="47" Foreground="#8091A1" HorizontalAlignment="Center"/><TextBlock Text="QR CODE WILL APPEAR HERE" FontSize="8" FontFamily="Doto" Foreground="#8998A6" Margin="0,10,0,0"/></StackPanel></Grid>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="23,3,0,0">
+                                        <TextBlock Text="Connect to this PC" FontSize="19" FontWeight="SemiBold" Foreground="#263B4F" Margin="0,0,0,6"/>
+                                        <TextBlock Text="1   Open V_Control on your phone" FontSize="11" Foreground="#536779" Margin="0,8,0,0"/>
+                                        <TextBlock Text="2   Select Pairing and scan this QR" FontSize="11" Foreground="#536779" Margin="0,7,0,0"/>
+                                        <TextBlock Text="3   Confirm the camera permission" FontSize="11" Foreground="#536779" Margin="0,7,0,0"/>
+                                        <TextBlock Text="4   Stay on the same private Wi-Fi" FontSize="11" Foreground="#536779" Margin="0,7,0,0"/>
+                                        <Separator Margin="0,17,0,15" Background="#D9E1E9"/>
+                                        <TextBlock Text="PC ADDRESS" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBlock x:Name="AddressText" Text="Start the connection server first" FontFamily="Consolas" FontSize="13" Foreground="#314B63"/>
+                                        <TextBlock Text="SIX-DIGIT PAIRING CODE" Style="{StaticResource FieldLabelStyle}" Margin="0,14,0,5"/>
+                                        <TextBlock x:Name="PairingCodeTextLarge" Text="— — — — — —" FontFamily="Doto" FontSize="18" Foreground="#526E87"/>
+                                        <TextBlock x:Name="PairingExpiryTextLarge" Text="One-time code · valid for 5 minutes" FontSize="10" Foreground="#8997A5" Margin="0,6,0,12"/>
+                                        <StackPanel Orientation="Horizontal"><Button x:Name="PairingServerButton" Content="Start server" Style="{StaticResource SecondaryButtonStyle}" Click="StartServer_Click"/><Button Content="Generate fresh code" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0" Click="PairingCode_Click"/></StackPanel>
+                                        <TextBlock Text="Security: the code expires after five minutes and can be used once. Do not expose port 8557 to the public internet." FontSize="10" Foreground="#8694A2" TextWrapping="Wrap" Margin="0,16,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Border Background="#E9EEF3" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="10" Padding="13" Margin="0,14,0,0"><StackPanel><TextBlock Text="If the app says the code has expired, create a fresh code here. The PC is authoritative for expiry and single-use validation; phone clock differences do not affect local QR parsing." FontSize="10" Foreground="#607488" TextWrapping="Wrap"/><TextBlock x:Name="PairingPageStatus" Text="Start the connection server to generate a pairing code." FontSize="10" Foreground="#607488" TextWrapping="Wrap" Margin="0,9,0,0"/></StackPanel></Border>
+                        </StackPanel>
+
+                        <!-- GAMEPAD -->
+                        <StackPanel x:Name="GamepadPage" Visibility="Collapsed" MaxWidth="1060" HorizontalAlignment="Left">
+                            <Grid Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Gamepad Controller" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Virtual Xbox-compatible input available to supported Windows games." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,0"/></StackPanel><Border Grid.Column="1" Background="#FFFFFF" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="9" Padding="11,7" VerticalAlignment="Center"><StackPanel Orientation="Horizontal"><Ellipse x:Name="GamepadStatusDot" Width="7" Height="7" Fill="#8793A1" Margin="0,0,7,0"/><TextBlock x:Name="GamepadConnectionText" Text="Waiting for phone" FontSize="10" Foreground="#607488" VerticalAlignment="Center"/></StackPanel></Border></Grid>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="0.9*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,0" Padding="19"><StackPanel><TextBlock Text="CONTROLLER STATUS" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="GamepadStatus" Text="Not initialized" FontSize="22" FontWeight="SemiBold" Foreground="#2C4155"/><TextBlock x:Name="GamepadExplanation" Text="ViGEmBus is needed to expose an Xbox-compatible virtual device." Style="{StaticResource BodyHintStyle}" Margin="0,6,0,12"/>
+                                    <Border Background="#F7F9FB" BorderBrush="#E0E7EE" BorderThickness="1" CornerRadius="10" Padding="4" Margin="0,0,0,12">
+                                        <Viewbox Height="132" Stretch="Uniform"><Canvas Width="360" Height="150">
+                                            <Path Data="M 72,28 C 47,28 39,47 32,75 L 20,119 C 16,137 31,146 47,134 L 91,103 L 269,103 L 313,134 C 329,146 344,137 340,119 L 328,75 C 321,47 313,28 288,28 Z" Fill="#E4EAF0" Stroke="#B6C4D1" StrokeThickness="3"/>
+                                            <Rectangle Canvas.Left="63" Canvas.Top="61" Width="42" Height="12" RadiusX="3" RadiusY="3" Fill="#8193A4"/><Rectangle Canvas.Left="78" Canvas.Top="46" Width="12" Height="42" RadiusX="3" RadiusY="3" Fill="#8193A4"/>
+                                            <Ellipse Canvas.Left="126" Canvas.Top="52" Width="34" Height="34" Fill="#CCD6E0" Stroke="#8FA0B0" StrokeThickness="3"/><Ellipse Canvas.Left="135" Canvas.Top="61" Width="16" Height="16" Fill="#73879A"/>
+                                            <Ellipse Canvas.Left="206" Canvas.Top="65" Width="34" Height="34" Fill="#CCD6E0" Stroke="#8FA0B0" StrokeThickness="3"/><Ellipse Canvas.Left="215" Canvas.Top="74" Width="16" Height="16" Fill="#73879A"/>
+                                            <Ellipse Canvas.Left="267" Canvas.Top="42" Width="19" Height="19" Fill="#8598AA" Stroke="#6D8296" StrokeThickness="1.5"/><Ellipse Canvas.Left="285" Canvas.Top="60" Width="19" Height="19" Fill="#8598AA" Stroke="#6D8296" StrokeThickness="1.5"/><Ellipse Canvas.Left="249" Canvas.Top="60" Width="19" Height="19" Fill="#8598AA" Stroke="#6D8296" StrokeThickness="1.5"/><Ellipse Canvas.Left="267" Canvas.Top="78" Width="19" Height="19" Fill="#8598AA" Stroke="#6D8296" StrokeThickness="1.5"/>
+                                            <Border Canvas.Left="171" Canvas.Top="31" Width="18" Height="18" CornerRadius="6" Background="#F8FAFC" BorderBrush="#BCC9D5" BorderThickness="1"><TextBlock Text="V" FontSize="10" FontWeight="Bold" Foreground="#71869A" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                                        </Canvas></Viewbox>
+                                    </Border><Separator Background="#D9E1E9"/><TextBlock Text="LAYOUT REFERENCE" Style="{StaticResource FieldLabelStyle}" Margin="0,13,0,8"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="A   Jump / Confirm" Foreground="#536B80" FontSize="11" Margin="0,4"/><TextBlock Text="B   Back / Cancel" Foreground="#536B80" FontSize="11" Margin="0,4"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="X   Reload / Action" Foreground="#536B80" FontSize="11" Margin="0,4"/><TextBlock Text="Y   Menu / Special" Foreground="#536B80" FontSize="11" Margin="0,4"/></StackPanel></Grid></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="8,0,0,0" Padding="19"><StackPanel><TextBlock Text="INPUT STREAM" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="GamepadPacketCount" Text="0 packets" FontSize="22" FontWeight="SemiBold" Foreground="#2C4155"/><TextBlock Text="Input packets received by this PC" Style="{StaticResource BodyHintStyle}" Margin="0,6,0,15"/><Separator Background="#D9E1E9"/><TextBlock Text="TEST BUTTONS" Style="{StaticResource FieldLabelStyle}" Margin="0,13,0,8"/><WrapPanel><Button Content="A" Width="51" Height="42" Margin="0,0,7,7" Style="{StaticResource SecondaryButtonStyle}" PreviewMouseDown="TestGamepadButton_Down" PreviewMouseUp="TestGamepadButton_Up"/><Button Content="B" Width="51" Height="42" Margin="0,0,7,7" Style="{StaticResource SecondaryButtonStyle}" PreviewMouseDown="TestGamepadButton_Down" PreviewMouseUp="TestGamepadButton_Up"/><Button Content="X" Width="51" Height="42" Margin="0,0,7,7" Style="{StaticResource SecondaryButtonStyle}" PreviewMouseDown="TestGamepadButton_Down" PreviewMouseUp="TestGamepadButton_Up"/><Button Content="Y" Width="51" Height="42" Margin="0,0,7,7" Style="{StaticResource SecondaryButtonStyle}" PreviewMouseDown="TestGamepadButton_Down" PreviewMouseUp="TestGamepadButton_Up"/><Button Content="Release all" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,0,7" Click="ReleaseInput_Click"/></WrapPanel></StackPanel></Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- KEYBOARD -->
+                        <StackPanel x:Name="KeyboardPage" Visibility="Collapsed" MaxWidth="1020" HorizontalAlignment="Left">
+                            <Grid Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Keyboard Control" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Use the on-screen keyboard in the Android app to send keys to Windows." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,0"/></StackPanel><Border Grid.Column="1" Background="#FFFFFF" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="9" Padding="10,7" VerticalAlignment="Center"><StackPanel Orientation="Horizontal"><Ellipse x:Name="KeyboardStatusDot" Width="7" Height="7" Fill="#8793A1" Margin="0,0,7,0"/><TextBlock x:Name="KeyboardConnectionText" Text="Waiting for phone" FontSize="10" Foreground="#607488"/></StackPanel></Border></Grid>
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="18"><StackPanel><TextBlock Text="COMMON KEYS" Style="{StaticResource FieldLabelStyle}"/><WrapPanel Margin="0,7,0,0"><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="16,10" Margin="0,0,7,7"><TextBlock Text="W" FontSize="14" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="16,10" Margin="0,0,7,7"><TextBlock Text="A" FontSize="14" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="16,10" Margin="0,0,7,7"><TextBlock Text="S" FontSize="14" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="16,10" Margin="0,0,7,7"><TextBlock Text="D" FontSize="14" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="12,10" Margin="0,0,7,7"><TextBlock Text="SPACE" FontSize="11" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="12,10" Margin="0,0,7,7"><TextBlock Text="SHIFT" FontSize="11" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="12,10" Margin="0,0,7,7"><TextBlock Text="CTRL" FontSize="11" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="12,10" Margin="0,0,7,7"><TextBlock Text="ALT" FontSize="11" FontWeight="SemiBold" Foreground="#40596F"/></Border><Border Background="#F0F3F6" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="7" Padding="12,10" Margin="0,0,7,7"><TextBlock Text="← ↑ ↓ →" FontSize="11" FontWeight="SemiBold" Foreground="#40596F"/></Border></WrapPanel><TextBlock Text="KEY MAPPING REFERENCE" Style="{StaticResource FieldLabelStyle}" Margin="0,18,0,8"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Jump" Foreground="#40576A" FontSize="11" Margin="0,5"/><TextBlock Text="Crouch" Foreground="#40576A" FontSize="11" Margin="0,5"/><TextBlock Text="Reload" Foreground="#40576A" FontSize="11" Margin="0,5"/><TextBlock Text="Interact" Foreground="#40576A" FontSize="11" Margin="0,5"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="Space" Foreground="#738494" FontFamily="Consolas" FontSize="11" Margin="0,5"/><TextBlock Text="Ctrl" Foreground="#738494" FontFamily="Consolas" FontSize="11" Margin="0,5"/><TextBlock Text="R" Foreground="#738494" FontFamily="Consolas" FontSize="11" Margin="0,5"/><TextBlock Text="E" Foreground="#738494" FontFamily="Consolas" FontSize="11" Margin="0,5"/></StackPanel></Grid><Separator Background="#D9E1E9" Margin="0,17,0,14"/><TextBlock x:Name="KeyboardInputCountText" Text="Input packets: 0" FontSize="11" FontFamily="Consolas" Foreground="#60778B"/><TextBlock Text="Note: key injection is performed by the Windows companion from phone-originated commands. Some elevated apps and secure screens may ignore synthetic input." Style="{StaticResource BodyHintStyle}" Margin="0,10,0,0"/></StackPanel></Border>
+                        </StackPanel>
+
+                        <!-- MOUSE -->
+                        <StackPanel x:Name="MousePage" Visibility="Collapsed" MaxWidth="1020" HorizontalAlignment="Left">
+                            <Grid Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Mouse Control" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Turn your phone into a touchpad for Windows pointer movement and clicks." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,0"/></StackPanel><Border Grid.Column="1" Background="#FFFFFF" BorderBrush="#D9E1E9" BorderThickness="1" CornerRadius="9" Padding="10,7" VerticalAlignment="Center"><StackPanel Orientation="Horizontal"><Ellipse x:Name="MouseStatusDot" Width="7" Height="7" Fill="#8793A1" Margin="0,0,7,0"/><TextBlock x:Name="MouseConnectionText" Text="Waiting for phone" FontSize="10" Foreground="#607488"/></StackPanel></Border></Grid>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.05*"/><ColumnDefinition Width="0.95*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,0" Padding="18"><StackPanel><TextBlock Text="REMOTE TOUCHPAD" Style="{StaticResource FieldLabelStyle}"/><Border Background="#EAF0F5" BorderBrush="#D3DEE8" BorderThickness="1" CornerRadius="10" Height="210" Margin="0,7,0,0"><Grid><TextBlock Text="⌖" FontSize="38" Foreground="#8799AA" HorizontalAlignment="Center" VerticalAlignment="Center"/><TextBlock Text="Touch and drag on your Android screen" FontSize="10" Foreground="#6F8294" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,15"/></Grid></Border><TextBlock Text="Cursor movement is sent in small relative deltas. The Windows input watchdog releases held mouse buttons after input packets stop." Style="{StaticResource BodyHintStyle}" Margin="0,12,0,0"/></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="8,0,0,0" Padding="18"><StackPanel><TextBlock Text="SUPPORTED ACTIONS" Style="{StaticResource FieldLabelStyle}"/><Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Left click / hold" FontSize="12" Foreground="#40576A"/><TextBlock Grid.Column="1" Text="PRIMARY" FontSize="9" Foreground="#71879A" FontWeight="Bold"/></Grid><Separator Background="#E2E8EE" Margin="0,10"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Right click / hold" FontSize="12" Foreground="#40576A"/><TextBlock Grid.Column="1" Text="SECONDARY" FontSize="9" Foreground="#71879A" FontWeight="Bold"/></Grid><Separator Background="#E2E8EE" Margin="0,10"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Scroll up / down" FontSize="12" Foreground="#40576A"/><TextBlock Grid.Column="1" Text="WHEEL" FontSize="9" Foreground="#71879A" FontWeight="Bold"/></Grid><Separator Background="#E2E8EE" Margin="0,10"/><TextBlock x:Name="MouseInputCountText" Text="Input packets: 0" FontSize="11" FontFamily="Consolas" Foreground="#60778B" Margin="0,4,0,0"/><Button Content="Release all held input" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left" Margin="0,14,0,0" Click="ReleaseInput_Click"/></StackPanel></Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- DIAGNOSTICS -->
+                        <StackPanel x:Name="DiagnosticsPage" Visibility="Collapsed" MaxWidth="1060" HorizontalAlignment="Left">
+                            <Grid Margin="0,0,0,15"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="System Diagnostics" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Live checks for network availability, WebSocket sessions and virtual controller output." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,0"/></StackPanel><Button Grid.Column="1" Content="↻  Refresh" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Click="RefreshDiagnostics_Click"/></Grid>
+                            <Grid Margin="0,0,0,14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,7,0" Padding="15"><StackPanel><TextBlock Text="NETWORK" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="DiagnosticAddress" Text="Checking…" FontSize="14" FontFamily="Consolas" Foreground="#334C62" TextWrapping="Wrap"/><TextBlock x:Name="DiagnosticNetworkState" Text="UNKNOWN" FontSize="9" Foreground="#8793A1" FontWeight="Bold" Margin="0,6,0,0"/></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="4,0,4,0" Padding="15"><StackPanel><TextBlock Text="WEBSOCKET" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="DiagnosticListener" Text="Stopped" FontSize="14" FontWeight="SemiBold" Foreground="#334C62" TextWrapping="Wrap"/><TextBlock x:Name="DiagnosticListenerState" Text="STOPPED" FontSize="9" Foreground="#8793A1" FontWeight="Bold" Margin="0,6,0,0"/></StackPanel></Border>
+                                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Margin="7,0,0,0" Padding="15"><StackPanel><TextBlock Text="VIRTUAL GAMEPAD" Style="{StaticResource FieldLabelStyle}"/><TextBlock x:Name="DiagnosticDriver" Text="Not initialized" FontSize="12" FontWeight="SemiBold" Foreground="#334C62" TextWrapping="Wrap"/><TextBlock x:Name="DiagnosticDriverState" Text="UNKNOWN" FontSize="9" Foreground="#8793A1" FontWeight="Bold" Margin="0,6,0,0"/></StackPanel></Border>
+                            </Grid>
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="18"><StackPanel><TextBlock Text="SESSION HEALTH" FontSize="14" FontWeight="SemiBold" Foreground="#2A3F52"/><TextBlock x:Name="DiagnosticsFooter" Text="Diagnostics are local checks; firewall reachability cannot be guaranteed by this app." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,12"/><Border Height="7" Background="#E7EDF2" CornerRadius="3"><Border HorizontalAlignment="Left" Width="220" Background="#8793A1" CornerRadius="3"/></Border><TextBlock Text="Firewall: allow TCP 8557 on Private networks only. Do not expose the listener on public networks." FontSize="10" Foreground="#7C8B99" TextWrapping="Wrap" Margin="0,13,0,0"/></StackPanel></Border>
+                        </StackPanel>
+
+                        <!-- SETTINGS -->
+                        <StackPanel x:Name="SettingsPage" Visibility="Collapsed" MaxWidth="900" HorizontalAlignment="Left">
+                            <TextBlock Text="Application Settings" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Connection, startup, and input-safety preferences." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,18"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,8,0" Padding="18"><StackPanel><TextBlock Text="CONNECTION" Style="{StaticResource FieldLabelStyle}"/><TextBlock Text="Local WebSocket server" FontSize="14" FontWeight="SemiBold" Foreground="#2A3F52"/><TextBlock Text="The mobile app connects over your private network. Keep Windows Firewall limited to Private networks." Style="{StaticResource BodyHintStyle}" Margin="0,6,0,12"/><StackPanel><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="Port" FontSize="11" Foreground="#66798A"/><TextBlock Grid.Column="1" Text="8557 / TCP" FontFamily="Consolas" FontSize="11" Foreground="#385167"/></Grid><Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="Pair code" FontSize="11" Foreground="#66798A"/><TextBlock Grid.Column="1" Text="Single use · 5 minutes" FontSize="11" Foreground="#385167"/></Grid></StackPanel></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Margin="8,0,0,0" Padding="18"><StackPanel><TextBlock Text="STARTUP" Style="{StaticResource FieldLabelStyle}"/><CheckBox x:Name="AutoStartServerCheckBox" Content="Start the connection listener when this app opens" Checked="AutoStartServer_Changed" Unchecked="AutoStartServer_Changed"/><TextBlock Text="This starts the listener when the app opens; it does not register a Windows logon startup entry." Style="{StaticResource BodyHintStyle}" Margin="22,0,0,11"/><Separator Background="#D9E1E9" Margin="0,7,0,12"/><TextBlock Text="INPUT SAFETY" Style="{StaticResource FieldLabelStyle}"/><TextBlock Text="Held input is released when a session disconnects or controller packets stop arriving." Style="{StaticResource BodyHintStyle}"/><StackPanel Orientation="Horizontal" Margin="0,16,0,0"><Button Content="Release all input" Style="{StaticResource SecondaryButtonStyle}" Click="ReleaseInput_Click"/><Button Content="Save settings" Style="{StaticResource PrimaryButtonStyle}" Margin="8,0,0,0" Click="SaveSettings_Click"/></StackPanel></StackPanel></Border>
+                            </Grid>
+                            <TextBlock x:Name="SettingsStatus" Text="Settings are stored locally in your user profile." FontSize="10" Foreground="#7B8B99" Margin="2,12,0,0"/>
+                        </StackPanel>
+
+                        <!-- LOGS -->
+                        <StackPanel x:Name="LogsPage" Visibility="Collapsed" MaxWidth="1120" HorizontalAlignment="Left">
+                            <Grid Margin="0,0,0,15"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Application Logs" Style="{StaticResource PageHeadingStyle}"/><TextBlock Text="Timestamped connection, pairing, input-safety and diagnostic events." Style="{StaticResource BodyHintStyle}" Margin="0,5,0,0"/></StackPanel><Button Grid.Column="1" Content="Export" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" VerticalAlignment="Center" Click="ExportLogs_Click"/><Button Grid.Column="2" Content="Clear" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center" Click="ClearLogs_Click"/></Grid>
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="8"><ListBox x:Name="LogList" Height="480" BorderThickness="0" Background="#FFFFFF" Foreground="#344A5E" FontFamily="Consolas" FontSize="10" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/></Border><TextBlock Text="Logs remain on this computer unless you export them." FontSize="10" Foreground="#7B8B99" Margin="3,10,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#D9E1E9" BorderThickness="0,1,0,0"><Grid Margin="15,0"><TextBlock Text="V_CONTROL  ·  ONE APP, FULL CONTROL" Foreground="#8493A2" FontSize="8" VerticalAlignment="Center"/><TextBlock x:Name="FooterStatus" Text="LISTENER STOPPED" Foreground="#8793A1" FontSize="8" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
+    </Grid>
+</Window>
