@@ -14,7 +14,8 @@ public sealed class PairingManager
         lock (_gate)
         {
             _code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
-            _expiresAt = DateTimeOffset.UtcNow.Add(lifetime ?? TimeSpan.FromMinutes(2));
+            // Matches the 5-minute lifetime shown in the UI and mobile instructions.
+            _expiresAt = DateTimeOffset.UtcNow.Add(lifetime ?? TimeSpan.FromMinutes(5));
             return (_code, _expiresAt);
         }
     }

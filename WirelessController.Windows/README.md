@@ -3,7 +3,7 @@
 ## Implemented
 
 - WPF dashboard with live connection/driver status and Overview, Devices, Settings, Diagnostics, Virtual gamepad, and Event logs pages.
-- QR pairing code with six cryptographically random digits, a two-minute expiry, and single-use consumption; manual connection supported by the mobile app.
+- QR pairing code with six cryptographically random digits, a five-minute expiry, and single-use consumption; manual connection supported by the mobile app.
 - Kestrel WebSocket listener on TCP port `8557`, one active paired phone, packet validation, and a 650 ms input heartbeat safety reset.
 - Xbox 360-compatible virtual gamepad output through ViGEmBus. Missing ViGEmBus no longer prevents desktop keyboard/mouse control from starting; the gamepad page explains the driver status.
 - Desktop keyboard key-down/up, Unicode text, relative mouse motion, left/right/middle buttons, and wheel scrolling through a narrow Windows `SendInput` service.

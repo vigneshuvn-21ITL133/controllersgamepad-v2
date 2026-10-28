@@ -55,40 +55,57 @@ public sealed class VirtualGamepadService : IDisposable
             Set(Xbox360Button.Left, buttons.Contains("LEFT"));
             Set(Xbox360Button.Right, buttons.Contains("RIGHT"));
             _controller!.SetAxisValue(Xbox360Axis.LeftThumbX, Axis(input, "leftX"));
-            _controller!.SetAxisValue(Xbox360Axis.LeftThumbY, (short)-Axis(input, "leftY"));
+            _controller!.SetAxisValue(Xbox360Axis.LeftThumbY, InvertedAxis(input, "leftY"));
             _controller!.SetAxisValue(Xbox360Axis.RightThumbX, Axis(input, "rightX"));
-            _controller!.SetAxisValue(Xbox360Axis.RightThumbY, (short)-Axis(input, "rightY"));
+            _controller!.SetAxisValue(Xbox360Axis.RightThumbY, InvertedAxis(input, "rightY"));
             _controller!.SetSliderValue(Xbox360Slider.LeftTrigger, Trigger(input, "leftTrigger"));
             _controller!.SetSliderValue(Xbox360Slider.RightTrigger, Trigger(input, "rightTrigger"));
         }
     }
 
+    /// <summary>Releases every virtual control. Used from disconnect, watchdog and shutdown paths, so it must not throw.</summary>
     public void Reset()
     {
         lock (_gate)
         {
             if (!_connected) return;
-            foreach (var button in new[] { Xbox360Button.A, Xbox360Button.B, Xbox360Button.X, Xbox360Button.Y,
-                         Xbox360Button.LeftShoulder, Xbox360Button.RightShoulder, Xbox360Button.Back, Xbox360Button.Start,
-                         Xbox360Button.LeftThumb, Xbox360Button.RightThumb, Xbox360Button.Up, Xbox360Button.Down,
-                         Xbox360Button.Left, Xbox360Button.Right })
-                _controller!.SetButtonState(button, false);
-            _controller!.SetAxisValue(Xbox360Axis.LeftThumbX, 0);
-            _controller!.SetAxisValue(Xbox360Axis.LeftThumbY, 0);
-            _controller!.SetAxisValue(Xbox360Axis.RightThumbX, 0);
-            _controller!.SetAxisValue(Xbox360Axis.RightThumbY, 0);
-            _controller!.SetSliderValue(Xbox360Slider.LeftTrigger, 0);
-            _controller!.SetSliderValue(Xbox360Slider.RightTrigger, 0);
+            try
+            {
+                foreach (var button in new[] { Xbox360Button.A, Xbox360Button.B, Xbox360Button.X, Xbox360Button.Y,
+                             Xbox360Button.LeftShoulder, Xbox360Button.RightShoulder, Xbox360Button.Back, Xbox360Button.Start,
+                             Xbox360Button.LeftThumb, Xbox360Button.RightThumb, Xbox360Button.Up, Xbox360Button.Down,
+                             Xbox360Button.Left, Xbox360Button.Right })
+                    _controller!.SetButtonState(button, false);
+                _controller!.SetAxisValue(Xbox360Axis.LeftThumbX, 0);
+                _controller!.SetAxisValue(Xbox360Axis.LeftThumbY, 0);
+                _controller!.SetAxisValue(Xbox360Axis.RightThumbX, 0);
+                _controller!.SetAxisValue(Xbox360Axis.RightThumbY, 0);
+                _controller!.SetSliderValue(Xbox360Slider.LeftTrigger, 0);
+                _controller!.SetSliderValue(Xbox360Slider.RightTrigger, 0);
+            }
+            catch (Exception ex)
+            {
+                // ViGEm throws when the bus or virtual device disappears; record it instead of breaking the release path.
+                LastError = ex.Message;
+            }
         }
     }
 
+    /// <summary>Most recent non-fatal ViGEm error seen while releasing controls, or null.</summary>
+    public string? LastError { get; private set; }
+
     private void Set(Xbox360Button button, bool down) => _controller!.SetButtonState(button, down);
+
     private static short Axis(InputMessage input, string key)
     {
         var v = input.Axes is not null && input.Axes.TryGetValue(key, out var value) ? value : 0;
         v = Math.Clamp(v, -1d, 1d);
-        return (short)Math.Round(v * (v < 0 ? 32768 : 32767));
+        return (short)Math.Clamp(Math.Round(v * (v < 0 ? 32768 : 32767)), short.MinValue, short.MaxValue);
     }
+
+    /// <summary>Stick Y is inverted so pushing up gives a positive value. Negating in int avoids short overflow at -1.0.</summary>
+    private static short InvertedAxis(InputMessage input, string key) => (short)Math.Clamp(-(int)Axis(input, key), short.MinValue, short.MaxValue);
+
     private static byte Trigger(InputMessage input, string key)
     {
         var v = input.Axes is not null && input.Axes.TryGetValue(key, out var value) ? value : 0;

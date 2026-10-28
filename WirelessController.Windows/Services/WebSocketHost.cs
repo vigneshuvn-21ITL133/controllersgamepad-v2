@@ -231,10 +231,19 @@ public sealed class WebSocketHost : IAsyncDisposable
                 var last = Interlocked.Read(ref _lastInputTicks);
                 if (last != 0 && DateTime.UtcNow - new DateTime(last, DateTimeKind.Utc) > TimeSpan.FromMilliseconds(650))
                 {
-                    _gamepad.Reset();
-                    _desktop.ReleaseAll();
+                    // Clear the timestamp first so a failing release cannot cause a retry storm every 150 ms.
                     Interlocked.Exchange(ref _lastInputTicks, 0);
-                    _status("Input heartbeat timed out; all held input was released for safety");
+                    try
+                    {
+                        _gamepad.Reset();
+                        _desktop.ReleaseAll();
+                        _status("Input heartbeat timed out; all held input was released for safety");
+                    }
+                    catch (Exception ex)
+                    {
+                        // An unhandled exception here would silently kill the safety watchdog for the whole session.
+                        _status($"Input heartbeat timed out and the release step failed: {ex.Message}");
+                    }
                 }
             }
         }

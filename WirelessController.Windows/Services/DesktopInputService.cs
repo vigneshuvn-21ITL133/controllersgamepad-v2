@@ -145,7 +145,9 @@ public sealed class DesktopInputService : IDisposable
             }
             _heldKeys.Clear();
             _heldMouseButtons.Clear();
-            if (events.Count > 0) Send(events.ToArray());
+            // Release paths run from disconnect, watchdog and shutdown code. They must never throw,
+            // otherwise connection state and the safety watchdog can be left in an inconsistent state.
+            if (events.Count > 0) TrySend(events.ToArray());
         }
     }
 
@@ -169,9 +171,24 @@ public sealed class DesktopInputService : IDisposable
 
     private static void Send(INPUT[] inputs)
     {
-        if (inputs.Length == 0) return;
-        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
-        if (sent != inputs.Length) throw new InvalidOperationException("Windows could not inject all requested input events. Try running the app at the same privilege level as the target application.");
+        if (!TrySend(inputs))
+            throw new InvalidOperationException("Windows could not inject all requested input events. Try running the app at the same privilege level as the target application.");
+    }
+
+    /// <summary>Injects events without throwing. Returns false when Windows blocked some or all of them (e.g. UIPI).</summary>
+    private static bool TrySend(INPUT[] inputs)
+    {
+        if (inputs.Length == 0) return true;
+        try
+        {
+            var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            return sent == inputs.Length;
+        }
+        catch (Exception)
+        {
+            // P/Invoke failures must not escape release paths either.
+            return false;
+        }
     }
 
     private void ThrowIfDisposed()
