@@ -68,4 +68,4 @@ public sealed record PairMessage(string? Type, string? Code);
 public sealed record InputMessage(string? Type, string[]? Buttons, Dictionary<string, double>? Axes);
 public sealed record DesktopMessage(string? Type, string? Action, string? Key, bool? Down, string? Text, int? Dx, int? Dy, string? Button, int? Delta);
 public sealed record PingMessage(string? Type, long ClientTime);
-public sealed record PairingPayload(string Host, int Port, string Code, DateTimeOffset ExpiresAt, string Protocol);
+public sealed record PairingPayload(string Host, int Port, string Code, string ExpiresAt, string Protocol);

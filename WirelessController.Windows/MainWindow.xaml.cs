@@ -251,7 +251,9 @@ public partial class MainWindow : Window
         {
             var (code, expiresAt) = _pairing.Create(TimeSpan.FromMinutes(5));
             _pairingExpiresAt = expiresAt;
-            var payload = new PairingPayload(_localAddress, WebSocketHost.Port, code, expiresAt, "wireless-controller-v1");
+            // Millisecond-precision UTC ISO string: the phone's JS engine parses this reliably, unlike 7-digit .NET "o" output.
+            var expiresText = expiresAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture);
+            var payload = new PairingPayload(_localAddress, WebSocketHost.Port, code, expiresText, "wireless-controller-v1");
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
             using var generator = new QRCodeGenerator();
@@ -526,23 +528,38 @@ public partial class MainWindow : Window
         _gamepad?.Dispose();
     }
 
+    /// <summary>
+    /// Picks the LAN address the phone can actually reach. Prefers adapters with a default gateway,
+    /// Wi-Fi/Ethernet, and skips virtual switches (Hyper-V, WSL, VMware, VPN tunnels) that the QR code must not advertise.
+    /// </summary>
     private static string? GetLocalIPv4()
     {
-        var interfaces = NetworkInterface.GetAllNetworkInterfaces()
+        var best = NetworkInterface.GetAllNetworkInterfaces()
             .Where(n => n.OperationalStatus == OperationalStatus.Up &&
-                        (n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 || n.NetworkInterfaceType == NetworkInterfaceType.Ethernet))
-            .Concat(NetworkInterface.GetAllNetworkInterfaces().Where(n => n.OperationalStatus == OperationalStatus.Up &&
                         n.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
-                        n.NetworkInterfaceType != NetworkInterfaceType.Wireless80211 &&
-                        n.NetworkInterfaceType != NetworkInterfaceType.Ethernet));
-        foreach (var network in interfaces)
-        {
-            var address = network.GetIPProperties().UnicastAddresses.FirstOrDefault(a =>
-                a.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address) &&
-                !a.Address.ToString().StartsWith("169.254.", StringComparison.Ordinal));
-            if (address is not null) return address.Address.ToString();
-        }
-        return null;
+                        n.NetworkInterfaceType != NetworkInterfaceType.Tunnel &&
+                        !IsVirtualAdapter(n))
+            .Select(n => new
+            {
+                Nic = n,
+                Address = n.GetIPProperties().UnicastAddresses.FirstOrDefault(a =>
+                    a.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address) &&
+                    !a.Address.ToString().StartsWith("169.254.", StringComparison.Ordinal))?.Address
+            })
+            .Where(x => x.Address is not null)
+            .OrderByDescending(x => x.Nic.GetIPProperties().GatewayAddresses.Any(g =>
+                g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any)))
+            .ThenBy(x => x.Nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ? 0
+                       : x.Nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet ? 1 : 2)
+            .FirstOrDefault();
+        return best?.Address?.ToString();
+    }
+
+    private static bool IsVirtualAdapter(NetworkInterface network)
+    {
+        var text = $"{network.Name} {network.Description}";
+        return new[] { "virtual", "vEthernet", "Hyper-V", "WSL", "VMware", "VirtualBox", "Pseudo", "Loopback" }
+            .Any(keyword => text.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class AppSettings
